@@ -6,8 +6,8 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 
-// Vervang dit door jouw ECHTE domeinnaam, anders werkt het niet!
-const JOUW_WEBSITE = "https://www.suleyman.be/"; 
+// LET OP: Zet hier jouw ECHTE domeinnaam!
+const JOUW_WEBSITE = "https://www.suleyman.be"; 
 
 app.use(cors({ origin: JOUW_WEBSITE }));
 
@@ -18,18 +18,20 @@ const io = new Server(server, {
     }
 });
 
-// Simpele test om te zien of het werkt
 app.get("/", (req, res) => {
-    res.send("De Video Server draait! Ga naar je website om te bellen.");
+    res.send("Discord Server draait!");
 });
 
-// De logica voor het bellen
 io.on("connection", (socket) => {
-    console.log("Gebruiker verbonden: " + socket.id);
-
     socket.on("join-room", (roomId, userId) => {
         socket.join(roomId);
         socket.to(roomId).emit("user-connected", userId);
+
+        // NIEUW: Luister naar chatberichten
+        socket.on("send-chat-message", (message) => {
+            // Stuur bericht naar iedereen in de kamer BEHALVE jijzelf
+            socket.to(roomId).emit("receive-chat-message", message);
+        });
 
         socket.on("disconnect", () => {
             socket.to(roomId).emit("user-disconnected", userId);
