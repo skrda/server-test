@@ -4,33 +4,43 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 
 const app = express();
-app.use(cors()); // Laat iedereen toe
+app.use(cors());
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: {
-        origin: "*", // Dit is de sleutel: IEDEREEN mag verbinden (dus ook suleyman.be)
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-app.get("/", (req, res) => {
-    res.send("Server van Suleyman draait!");
-});
+app.get("/", (req, res) => res.send("Suleyman Server V3"));
 
 io.on("connection", (socket) => {
-    console.log("Nieuwe verbinding: " + socket.id);
-
     socket.on("join-room", (roomId, userId) => {
         socket.join(roomId);
-        // Vertel de anderen in de kamer dat er iemand is
+        
+        // 1. Iemand komt binnen -> Vertel het de Admin
         socket.to(roomId).emit("user-connected", userId);
 
-        // Chatberichten doorsturen
+        // 2. Chat berichten
         socket.on("send-chat-message", (data) => {
-            // Stuur naar iedereen in de kamer behalve de verzender
             socket.to(roomId).emit("receive-chat-message", data);
+        });
+
+        // 3. NIEUW: Admin zegt "Ik begin met delen"
+        socket.on("admin-start-share", () => {
+            // Vertel iedereen in de kamer dat de stream begint
+            socket.to(roomId).emit("stream-started-signal");
+        });
+
+        // 4. NIEUW: Admin zegt "Ik stop"
+        socket.on("admin-stop-share", () => {
+            socket.to(roomId).emit("stream-stopped-signal");
+        });
+
+        // 5. NIEUW: Een kijker vraagt om de stream (omdat hij er al was)
+        socket.on("request-stream", (userId) => {
+            // Stuur dit verzoek naar de Admin zodat die kan terugbellen
+            socket.to(roomId).emit("connect-to-user", userId);
         });
 
         socket.on("disconnect", () => {
@@ -40,6 +50,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server draait op poort ${PORT}`);
-});
+server.listen(PORT, () => { console.log(`Server draait op poort ${PORT}`); });
