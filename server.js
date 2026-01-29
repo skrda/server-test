@@ -4,33 +4,33 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 
 const app = express();
+app.use(cors()); // Laat iedereen toe
+
 const server = http.createServer(app);
-
-// LET OP: Zet hier jouw ECHTE domeinnaam!
-const JOUW_WEBSITE = "https://www.suleyman.be"; 
-
-app.use(cors({ origin: JOUW_WEBSITE }));
 
 const io = new Server(server, {
     cors: {
-        origin: JOUW_WEBSITE,
+        origin: "*", // Dit is de sleutel: IEDEREEN mag verbinden (dus ook suleyman.be)
         methods: ["GET", "POST"]
     }
 });
 
 app.get("/", (req, res) => {
-    res.send("Discord Server draait!");
+    res.send("Server van Suleyman draait!");
 });
 
 io.on("connection", (socket) => {
+    console.log("Nieuwe verbinding: " + socket.id);
+
     socket.on("join-room", (roomId, userId) => {
         socket.join(roomId);
+        // Vertel de anderen in de kamer dat er iemand is
         socket.to(roomId).emit("user-connected", userId);
 
-        // NIEUW: Luister naar chatberichten
-        socket.on("send-chat-message", (message) => {
-            // Stuur bericht naar iedereen in de kamer BEHALVE jijzelf
-            socket.to(roomId).emit("receive-chat-message", message);
+        // Chatberichten doorsturen
+        socket.on("send-chat-message", (data) => {
+            // Stuur naar iedereen in de kamer behalve de verzender
+            socket.to(roomId).emit("receive-chat-message", data);
         });
 
         socket.on("disconnect", () => {
